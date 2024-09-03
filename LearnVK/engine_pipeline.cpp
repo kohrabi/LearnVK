@@ -100,6 +100,7 @@ namespace Engine {
 		pipelineInfo.pColorBlendState = &configInfo.colorBlendInfo;
 		pipelineInfo.pDepthStencilState = &configInfo.depthStencilInfo;
 		pipelineInfo.pDynamicState = nullptr; // Config pipeline dynamically without recreating the pipeline
+		pipelineInfo.pDynamicState = &configInfo.dynamicStateInfo;
 
 		pipelineInfo.layout = configInfo.pipelineLayout;
 		pipelineInfo.renderPass = configInfo.renderPass;
@@ -133,32 +134,19 @@ namespace Engine {
 
 	}
 
-	void EnginePipeline::DefaultPipelineConfigInfo(PipelineConfigInfo& configInfo, uint32_t width, uint32_t height) {
-		configInfo = PipelineConfigInfo{};
+	void EnginePipeline::DefaultPipelineConfigInfo(PipelineConfigInfo& configInfo) {
 
 		// Telling Vulkan how to take in Vertex data and construct them
 		configInfo.inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 		configInfo.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 		configInfo.inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
 
-		// Set up viewport stuff. Ex: Set viewport.width to width/2 will squished the triangle  
-		configInfo.viewport.x = 0.0f;
-		configInfo.viewport.y = 0.0f;
-		configInfo.viewport.width = static_cast<float>(width);
-		configInfo.viewport.height = static_cast<float>(height);
-		configInfo.viewport.minDepth = 0.0f; // Depth range, used to transform z component
-		configInfo.viewport.maxDepth = 1.0f;
-
-		// Crop the viewport outside of range
-		configInfo.scissor.offset = { 0, 0 };
-		configInfo.scissor.extent = { width, height };
-
 		// Combine viewport and scissor
 		configInfo.viewportInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 		configInfo.viewportInfo.viewportCount = 1;
-		configInfo.viewportInfo.pViewports = &configInfo.viewport;
+		configInfo.viewportInfo.pViewports = nullptr;
 		configInfo.viewportInfo.scissorCount = 1;
-		configInfo.viewportInfo.pScissors = &configInfo.scissor;
+		configInfo.viewportInfo.pScissors = nullptr;
 
 		// Rasterization state
 		// Break up geometry into fragment
@@ -215,5 +203,12 @@ namespace Engine {
 		configInfo.depthStencilInfo.stencilTestEnable = VK_FALSE;
 		configInfo.depthStencilInfo.front = {};  // Optional
 		configInfo.depthStencilInfo.back = {};   // Optional
+
+		configInfo.dynamicStateEnables = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+		configInfo.dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+		configInfo.dynamicStateInfo.pDynamicStates = configInfo.dynamicStateEnables.data();
+		configInfo.dynamicStateInfo.dynamicStateCount = static_cast<uint32_t>(configInfo.dynamicStateEnables.size());
+		configInfo.dynamicStateInfo.flags = 0;
+
 	}
 }

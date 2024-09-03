@@ -127,6 +127,12 @@
       <Message>
       </Message>
     </CustomBuildStep>
+    <PreBuildEvent>
+      <Command>call "$(ProjectDir)shaders\compile.bat"</Command>
+    </PreBuildEvent>
+    <PreBuildEvent>
+      <Message>Compile Shaders</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -155,23 +161,34 @@
       <Message>
       </Message>
     </CustomBuildStep>
+    <PreBuildEvent>
+      <Command>call "$(ProjectDir)shaders\compile.bat"</Command>
+    </PreBuildEvent>
+    <PreBuildEvent>
+      <Message>Compile Shaders</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="engine_device.cpp" />
     <ClCompile Include="engine_model.cpp" />
     <ClCompile Include="engine_pipeline.cpp" />
+    <ClCompile Include="engine_renderer.cpp" />
     <ClCompile Include="engine_window.cpp" />
     <ClCompile Include="first_app.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="engine_swap_chain.cpp" />
+    <ClCompile Include="simple_render_system.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="engine_device.hpp" />
+    <ClInclude Include="engine_game_object.hpp" />
     <ClInclude Include="engine_model.hpp" />
     <ClInclude Include="engine_pipeline.hpp" />
+    <ClInclude Include="engine_renderer.hpp" />
     <ClInclude Include="engine_window.hpp" />
     <ClInclude Include="first_app.hpp" />
     <ClInclude Include="engine_swap_chain.hpp" />
+    <ClInclude Include="simple_render_system.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

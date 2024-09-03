@@ -18,15 +18,19 @@ namespace Engine {
 
 		bool ShouldClose() { return glfwWindowShouldClose(window); }
 		VkExtent2D GetExtent() { return { static_cast<uint32_t>(width), static_cast<uint32_t>(height) }; }
+		bool WasWindowResized() { return frameBufferResized; }
+
+		void ResetWindowResizedFlag() { frameBufferResized = false; }
 
 		void CreateWindowSurface(VkInstance instance, VkSurfaceKHR* surface);
 
 	private:
-
+		static void frameBufferResizeCallback(GLFWwindow* window, int width, int height);
 		void initWindow();
 		
-		const int width;
-		const int height;
+		int width;
+		int height;
+		bool frameBufferResized = false;
 			
 		std::string windowName;
 		GLFWwindow* window;

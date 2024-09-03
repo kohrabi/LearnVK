@@ -13,12 +13,24 @@ namespace Engine {
 
     EngineSwapChain::EngineSwapChain(EngineDevice &deviceRef, VkExtent2D extent)
         : device{deviceRef}, windowExtent{extent} {
-      createSwapChain();
-      createImageViews();
-      createRenderPass();
-      createDepthResources();
-      createFramebuffers();
-      createSyncObjects();
+        init();
+    }
+
+    EngineSwapChain::EngineSwapChain(EngineDevice& deviceRef, VkExtent2D extent, std::shared_ptr<EngineSwapChain> previous)
+        : device{ deviceRef }, windowExtent{ extent }, oldSwapChain {previous} {
+        init();
+
+        // clean up old swap chain since it's no longer needed
+        oldSwapChain = nullptr;
+    }
+
+    void EngineSwapChain::init() {
+        createSwapChain();
+        createImageViews();
+        createRenderPass();
+        createDepthResources();
+        createFramebuffers();
+        createSyncObjects();
     }
 
     EngineSwapChain::~EngineSwapChain() {
@@ -119,6 +131,7 @@ namespace Engine {
       return result;
     }
 
+
     void EngineSwapChain::createSwapChain() {
       SwapChainSupportDetails swapChainSupport = device.getSwapChainSupport();
 
@@ -162,7 +175,7 @@ namespace Engine {
       createInfo.presentMode = presentMode;
       createInfo.clipped = VK_TRUE;
 
-      createInfo.oldSwapchain = VK_NULL_HANDLE;
+      createInfo.oldSwapchain = oldSwapChain == nullptr ? VK_NULL_HANDLE : oldSwapChain->swapChain;
 
       if (vkCreateSwapchainKHR(device.device(), &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
         throw std::runtime_error("failed to create swap chain!");
@@ -289,6 +302,7 @@ namespace Engine {
 
     void EngineSwapChain::createDepthResources() {
       VkFormat depthFormat = findDepthFormat();
+      swapChainDepthFormat = depthFormat;
       VkExtent2D swapChainExtent = getSwapChainExtent();
 
       depthImages.resize(imageCount());
@@ -362,7 +376,7 @@ namespace Engine {
     VkSurfaceFormatKHR EngineSwapChain::chooseSwapSurfaceFormat(
         const std::vector<VkSurfaceFormatKHR> &availableFormats) {
       for (const auto &availableFormat : availableFormats) {
-        if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM &&
+        if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB &&
             availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
           return availableFormat;
         }

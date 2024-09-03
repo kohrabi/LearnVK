@@ -1,15 +1,18 @@
 #pragma once
 
+#include "engine_game_object.hpp"
 #include "engine_device.hpp"
 #include "engine_window.hpp"
-#include "engine_pipeline.hpp"
-#include "engine_swap_chain.hpp"
 #include "engine_model.hpp"
+#include "engine_renderer.hpp"														
 
 #include <memory>
 #include <vector>
 
+
 namespace Engine {
+
+
 	class FirstApp {
 	public:
 		static constexpr int WIDTH = 800;
@@ -24,11 +27,7 @@ namespace Engine {
 
 
 	private:
-		void createPipelineLayout();
-		void createPipeline();
-		void createCommandBuffers();
-		void drawFrame();
-		void loadModels();
+		void loadGameObjects();
 		void createSierpinskiTriangle(
 			std::vector<EngineModel::Vertex>& vertices,
 			int depth,
@@ -38,10 +37,9 @@ namespace Engine {
 
 		EngineWindow engineWindow{ WIDTH, HEIGHT, "Hello Vulkan!" };
 		EngineDevice engineDevice{ engineWindow };
-		EngineSwapChain engineSwapChain{ engineDevice, engineWindow.GetExtent() };
-		std::unique_ptr<EnginePipeline> enginePipeline;
-		VkPipelineLayout pipelineLayout;
-		std::vector<VkCommandBuffer> commandBuffers;
-		std::unique_ptr<EngineModel> engineModel;
+
+		EngineRenderer engineRenderer{ engineWindow, engineDevice };
+
+		std::vector<EngineGameObject> gameObjects;
 	};
 }
