@@ -2,23 +2,23 @@
 
 #include "engine_model.hpp"
 
+#include <glm/gtc/matrix_transform.hpp>
+
 #include <memory>
 
 namespace Engine {
-	struct Transform2DComponent {
-		glm::vec2 translations{}; // position offset
-		glm::vec2 scale{ 1.0f, 1.0f };
-		float rotation;
+    struct TransformComponent {
+        glm::vec3 translation{}; // position offset
+        glm::vec3 scale{ 1.0f, 1.0f, 1.0f };
+        glm::vec3 rotation{};
 
-		glm::mat2 mat2() {
-			const float s = glm::sin(rotation);
-			const float c = glm::cos(rotation);
 
-			glm::mat2 rotMat{ {c, s}, {-s, c} };
+        // Matrix corrsponds to Translate * Ry * Rx * Rz * Scale
+        // Rotations correspond to Tait-bryan angles of Y(1), X(2), Z(3)
+        // https://en.wikipedia.org/wiki/Euler_angles#Rotation_matrix
+		glm::mat4 mat4();
+		glm::mat3 normalMatrix();
 
-			glm::mat2 scaleMat{ { scale.x, 0.0f }, { 0, scale.y } };
-			return rotMat * scaleMat;
-		}
 	};
 
 	class EngineGameObject {
@@ -38,7 +38,7 @@ namespace Engine {
 		id_t GetId() const { return id; }
 		std::shared_ptr<EngineModel> model{};
 		glm::vec3 color{};
-		Transform2DComponent transform2D;
+		TransformComponent transform;
 
 	private:
 		EngineGameObject(id_t objId) : id (objId) {}

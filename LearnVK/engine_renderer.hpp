@@ -21,6 +21,7 @@ namespace Engine {
 
 		VkRenderPass GetSwapChainRenderPass() const { return engineSwapChain->getRenderPass(); }
 		bool IsFrameInProgress() const { return isFrameStarted; }
+		float GetAspectRatio() const { return engineSwapChain->extentAspectRatio(); }
 		VkCommandBuffer GetCurrentCommandBuffer() const {
 			assert(isFrameStarted && "Cannot get command buffer when frame is not in progress");
 			return commandBuffers[currentFrameIndex];

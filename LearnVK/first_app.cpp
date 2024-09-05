@@ -1,5 +1,8 @@
 #include "first_app.hpp"
 #include "simple_render_system.hpp"
+#include "engine_camera.hpp"
+#include "engine_buffer.hpp"
+#include "keyboard_movement_controller.hpp"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -8,11 +11,21 @@
 
 #include <stdexcept>
 #include <array>
+#include <chrono>
 
 
 namespace Engine {
 
+	struct GlobalUbo {
+		alignas(16) glm::mat4 projectionView{ 1.0f };
+		alignas(16) glm::vec3 lightDirection = glm::normalize(glm::vec3(1.0f, 3.0f, -1.0f));
+	};
+
 	FirstApp::FirstApp() {
+		globalPool = EngineDescriptorPool::Builder(engineDevice)
+			.setMaxSets(EngineSwapChain::MAX_FRAMES_IN_FLIGHT)
+			.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, EngineSwapChain::MAX_FRAMES_IN_FLIGHT)
+			.build();
 		loadGameObjects();
 	}
 
@@ -20,118 +33,99 @@ namespace Engine {
 	}
 
 	void FirstApp::run() {
-		SimpleRenderSystem simpleRenderSystem{ engineDevice, engineRenderer.GetSwapChainRenderPass() };
+		std::vector<std::unique_ptr<EngineBuffer> > uboBuffers{ EngineSwapChain::MAX_FRAMES_IN_FLIGHT };
+		for (int i = 0; i < uboBuffers.size(); i++) {
+			uboBuffers[i] = std::make_unique<EngineBuffer>(
+				engineDevice,
+				sizeof(GlobalUbo),
+				1,
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+			);
+			uboBuffers[i]->map();
+		}
+
+		auto globalSetLayout = EngineDescriptorSetLayout::Builder(engineDevice)
+			.addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+			.build();
+
+		std::vector<VkDescriptorSet> globalDescriptorSets(EngineSwapChain::MAX_FRAMES_IN_FLIGHT);
+		for (int i = 0; i < globalDescriptorSets.size(); i++) {
+			auto bufferInfo = uboBuffers[i]->descriptorInfo();
+			EngineDescriptorWriter(*globalSetLayout, *globalPool)
+				.writeBuffer(0, &bufferInfo)
+				.build(globalDescriptorSets[i]);
+		}
+
+		SimpleRenderSystem simpleRenderSystem{ 
+			engineDevice, 
+			engineRenderer.GetSwapChainRenderPass(), 
+			globalSetLayout->getDescriptorSetLayout()};
+		EngineCamera camera{};
+		camera.SetViewTarget(glm::vec3{ -1.f, -2.f, -20.f }, glm::vec3{ 0.0f, 0.0f, 2.5f });
+
+		auto viewerObject = EngineGameObject::CreateGameObject();
+		KeyboardMovementController cameraController{};
+
+		auto currentTime = std::chrono::high_resolution_clock::now();
 
 		while (!engineWindow.ShouldClose()) {
 			glfwPollEvents();
 
+			auto newTime = std::chrono::high_resolution_clock::now();
+			float frameTime = std::chrono::duration<float, std::chrono::seconds::period>(newTime - currentTime).count();
+			currentTime = newTime;
+			cameraController.MoveInPlaneXZ(engineWindow.GetGLFWWindow(), frameTime, viewerObject);
+			camera.SetViewYXZ(viewerObject.transform.translation, viewerObject.transform.rotation);
+
+			float aspect = engineRenderer.GetAspectRatio();
+			camera.SetPerspectiveProjection(glm::radians(50.f), aspect, 0.1f, 100.f);
+
 			if (auto commandBuffer = engineRenderer.BeginFrame()) {
-				
-				// begin offscreen shadow passs
-				// render shadow casting objects
-				// end offscreen shadow pass
+			
+				int frameIndex = engineRenderer.GetFrameIndex();
+				FrameInfo frameInfo{
+					frameIndex,
+					frameTime,
+					commandBuffer,
+					camera,
+					globalDescriptorSets[frameIndex]
+				};
+				// Update
+				GlobalUbo ubo{};
+				ubo.projectionView = camera.GetProjection() * camera.GetView();
+				uboBuffers[frameIndex]->writeToBuffer(&ubo);
+				uboBuffers[frameIndex]->flush();
+
+					
+				// Render
 
 				engineRenderer.BeginSwapChainRenderPass(commandBuffer);
 
-				simpleRenderSystem.RenderGameObjects(commandBuffer, gameObjects);
+				simpleRenderSystem.RenderGameObjects(frameInfo, gameObjects);
 				engineRenderer.EndSwapChainRenderPass(commandBuffer);
 				engineRenderer.EndFrame();
 
 			}
 		}
 
-		//vkDeviceWaitIdle(engineDevice.device());
+		vkDeviceWaitIdle(engineDevice.device());
 	}
 
 	void FirstApp::loadGameObjects() {
-		
-		std::vector<glm::vec3> colors{
-			{1.f, .7f, .73f},
-			{1.f, .87f, .73f},
-			{1.f, 1.f, .73f},
-			{.73f, 1.f, .8f},
-			{.73, .88f, 1.f}  //
-		};
+		std::shared_ptr < EngineModel > vaseModel = EngineModel::CreateModelFromFile(engineDevice, "models\\smooth_vase.obj");
+		auto vase = EngineGameObject::CreateGameObject();
+		vase.model = vaseModel;
+		vase.transform.translation = { 0.0f, 0.5f, 2.5f };
+		vase.transform.scale = glm::vec3(3.f, 1.5f, 3.f);
+		gameObjects.push_back(std::move(vase));
 
-
-		//for (auto& color : colors) {
-		//	color = glm::pow(color, glm::vec3{ 2.2f });
-		//}
-		std::vector<EngineModel::Vertex> vertices(0);
-		createSierpinskiTriangle(vertices, 0, { 0.0f, -0.5f }, { -0.5f, 0.5f }, { 0.5f, 0.5f });
-
-		auto model = std::make_shared<EngineModel>(engineDevice, vertices);
-		for (int i = 0; i < 1; i++) {
-			auto triangle = EngineGameObject::CreateGameObject();
-			triangle.model = model;
-			triangle.transform2D.scale = glm::vec2(.5f) + i * 0.025f;
-			//triangle.transform2D.rotation = i * glm::pi<float>() * .025f;
-			triangle.color = colors[i % colors.size()];
-			gameObjects.push_back(std::move(triangle));
-		}
+		std::shared_ptr < EngineModel > flatVaseModel = EngineModel::CreateModelFromFile(engineDevice, "models\\flat_vase.obj");
+		auto flatVase = EngineGameObject::CreateGameObject();
+		flatVase.model = flatVaseModel;
+		flatVase.transform.translation = { 0.5f, 0.5f, 2.5f };
+		flatVase.transform.scale = glm::vec3(3.f, 1.5f, 3.f);
+		gameObjects.push_back(std::move(flatVase));
 	}
 
-	void FirstApp::createSierpinskiTriangle(
-		std::vector<EngineModel::Vertex>& vertices, 
-		int depth, 
-		glm::vec2 top, 
-		glm::vec2 left, 
-		glm::vec2 right)
-	{
-		// OMG I WASTED TOO LONG NOT DOING A FOR LOOP
-		if (depth <= 0) {
-			vertices.push_back({ top, glm::vec3(1.0f, 0.0f, 0.0f) });
-			vertices.push_back({ right, glm::vec3(0.0f, 1.0f, 0.0f) });
-			vertices.push_back({ left, glm::vec3(0.0f, 0.0f, 1.0f) });
-		}
-		else {
-			glm::vec2 leftMid = (top + left) * 0.5f;
-			glm::vec2 rightMid = (top + right) * 0.5f;
-			glm::vec2 bottomMid = (left + right) * 0.5f;
-			createSierpinskiTriangle(vertices, depth - 1, top, leftMid, rightMid);
-			createSierpinskiTriangle(vertices, depth - 1, rightMid, bottomMid, right);
-			createSierpinskiTriangle(vertices, depth - 1, leftMid, left, bottomMid);
-		}
-		// depth = 3;
-		// i = 1
-		// j = 0
-		// powerOfTwo = 2^1 = 2 / 2 = 1
-		
-		/*
-		// aint gonna lie
-		// this is kinda retarded
-		// this doesn't work
-		float depthPowerOfTwo = pow(2, depth);
-		int powerCount = 0;
-		for (int i = 0; i < pow(2, depth - 1); i++) {
-			if (((i + 1) & ((i + 1) - 1)) == 0) { // Is power of two
-				powerCount = 0;
-				for (int j = 0; j < i + 1; j++) {
-					float xPos = -i / depthPowerOfTwo + 2 * j / depthPowerOfTwo;
-					vertices.push_back({{ xPos, -0.5f + ((i) * 2 / depthPowerOfTwo) }});
-					vertices.push_back({{ xPos + (1 / depthPowerOfTwo), -0.5f + ((i + 1) * 2 / depthPowerOfTwo) }});
-					vertices.push_back({{ xPos - (1 / depthPowerOfTwo), -0.5f + ((i + 1) * 2 / depthPowerOfTwo) }});
-				}
-			}
-			else {
-				powerCount++;
-				for (int j = 0; j < powerCount; j++) {
-					if (((powerCount + 1) & ((powerCount + 1) - 1)) == 0 && j == 1) {
-						continue;
-					}
-					float xPos = -i / depthPowerOfTwo + 2 * j / depthPowerOfTwo;
-					vertices.push_back({ { xPos, -0.5f + ((i) * 2 / depthPowerOfTwo) } });
-					vertices.push_back({ { xPos + (1 / depthPowerOfTwo), -0.5f + ((i + 1) * 2 / depthPowerOfTwo) } });
-					vertices.push_back({ { xPos - (1 / depthPowerOfTwo), -0.5f + ((i + 1) * 2 / depthPowerOfTwo) } });
-
-					float leftXPos = -i / depthPowerOfTwo + 2 * (i - j) / depthPowerOfTwo;
-					
-					vertices.push_back({ { leftXPos, -0.5f + ((i) * 2 / depthPowerOfTwo) } });
-					vertices.push_back({ { leftXPos + (1 / depthPowerOfTwo), -0.5f + ((i + 1) * 2 / depthPowerOfTwo) } });
-					vertices.push_back({ { leftXPos - (1 / depthPowerOfTwo), -0.5f + ((i + 1) * 2 / depthPowerOfTwo) } });
-				}
-			}
-		}
-		*/
-	}
 }
