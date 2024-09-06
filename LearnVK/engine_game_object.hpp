@@ -5,6 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <memory>
+#include <unordered_map>
 
 namespace Engine {
     struct TransformComponent {
@@ -24,6 +25,7 @@ namespace Engine {
 	class EngineGameObject {
 	public:
 		using id_t = unsigned int;
+		using Map = std::unordered_map<id_t, EngineGameObject>;
 
 		static EngineGameObject CreateGameObject() {
 			static id_t currentId = 0;

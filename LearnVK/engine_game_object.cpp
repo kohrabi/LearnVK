@@ -1,6 +1,7 @@
 #include "engine_game_object.hpp"
 
 namespace Engine {
+    // World matrix of Object
     glm::mat4 TransformComponent::mat4() {
         const float c3 = glm::cos(rotation.z);
         const float s3 = glm::sin(rotation.z);

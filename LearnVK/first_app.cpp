@@ -16,11 +16,6 @@
 
 namespace Engine {
 
-	struct GlobalUbo {
-		alignas(16) glm::mat4 projectionView{ 1.0f };
-		alignas(16) glm::vec3 lightDirection = glm::normalize(glm::vec3(1.0f, 3.0f, -1.0f));
-	};
-
 	FirstApp::FirstApp() {
 		globalPool = EngineDescriptorPool::Builder(engineDevice)
 			.setMaxSets(EngineSwapChain::MAX_FRAMES_IN_FLIGHT)
@@ -45,8 +40,8 @@ namespace Engine {
 			uboBuffers[i]->map();
 		}
 
-		auto globalSetLayout = EngineDescriptorSetLayout::Builder(engineDevice)
-			.addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+		auto globalSetLayout = EngineDescriptorSetLayout::Builder(engineDevice)	
+			.addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
 			.build();
 
 		std::vector<VkDescriptorSet> globalDescriptorSets(EngineSwapChain::MAX_FRAMES_IN_FLIGHT);
@@ -89,7 +84,8 @@ namespace Engine {
 					frameTime,
 					commandBuffer,
 					camera,
-					globalDescriptorSets[frameIndex]
+					globalDescriptorSets[frameIndex],
+					gameObjects
 				};
 				// Update
 				GlobalUbo ubo{};
@@ -102,7 +98,7 @@ namespace Engine {
 
 				engineRenderer.BeginSwapChainRenderPass(commandBuffer);
 
-				simpleRenderSystem.RenderGameObjects(frameInfo, gameObjects);
+				simpleRenderSystem.RenderGameObjects(frameInfo);
 				engineRenderer.EndSwapChainRenderPass(commandBuffer);
 				engineRenderer.EndFrame();
 
@@ -113,19 +109,26 @@ namespace Engine {
 	}
 
 	void FirstApp::loadGameObjects() {
-		std::shared_ptr < EngineModel > vaseModel = EngineModel::CreateModelFromFile(engineDevice, "models\\smooth_vase.obj");
+		std::shared_ptr < EngineModel > engineModel = EngineModel::CreateModelFromFile(engineDevice, "models\\smooth_vase.obj");
 		auto vase = EngineGameObject::CreateGameObject();
-		vase.model = vaseModel;
-		vase.transform.translation = { 0.0f, 0.5f, 2.5f };
+		vase.model = engineModel;
+		vase.transform.translation = { 0.0f, 0.5f, 0.f };
 		vase.transform.scale = glm::vec3(3.f, 1.5f, 3.f);
-		gameObjects.push_back(std::move(vase));
+		gameObjects.emplace(vase.GetId(), std::move(vase));
 
-		std::shared_ptr < EngineModel > flatVaseModel = EngineModel::CreateModelFromFile(engineDevice, "models\\flat_vase.obj");
+		engineModel = EngineModel::CreateModelFromFile(engineDevice, "models\\flat_vase.obj");
 		auto flatVase = EngineGameObject::CreateGameObject();
-		flatVase.model = flatVaseModel;
-		flatVase.transform.translation = { 0.5f, 0.5f, 2.5f };
+		flatVase.model = engineModel;
+		flatVase.transform.translation = { 2.5f, 0.5f, 0.f };
 		flatVase.transform.scale = glm::vec3(3.f, 1.5f, 3.f);
-		gameObjects.push_back(std::move(flatVase));
+		gameObjects.emplace(flatVase.GetId(), std::move(flatVase));
+
+		engineModel = EngineModel::CreateModelFromFile(engineDevice, "models\\quad.obj");
+		auto floor = EngineGameObject::CreateGameObject();
+		floor.model = engineModel;
+		floor.transform.translation = { 0.f, 0.5f, 0.f };
+		floor.transform.scale = glm::vec3(3.f, 1.f, 3.f);
+		gameObjects.emplace(floor.GetId(), std::move(floor));
 	}
 
 }

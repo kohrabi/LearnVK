@@ -42,7 +42,7 @@ namespace Engine {
 		);
 	}
 
-	void SimpleRenderSystem::RenderGameObjects(FrameInfo& frameInfo, std::vector<EngineGameObject>& gameObjects) {
+	void SimpleRenderSystem::RenderGameObjects(FrameInfo& frameInfo) {
 
 		enginePipeline->Bind(frameInfo.commandBuffer);
 
@@ -55,9 +55,10 @@ namespace Engine {
 			0, nullptr
 		);
 
-		for (auto& obj : gameObjects) {
+		for (auto& keyVal : frameInfo.gameObjects) {
 			//obj.transform.rotation = glm::mod(obj.transform.rotation + 0.01f, glm::two_pi<float>());
-
+			auto& obj = keyVal.second;
+			if (obj.model == nullptr) continue;
 			for (int j = 0; j < 4; j++) {
 				SimplePushConstantData push{};
 				push.modelMatrix = obj.transform.mat4();
