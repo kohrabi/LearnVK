@@ -8,6 +8,10 @@
 #include <unordered_map>
 
 namespace Engine {
+	struct PointLightComponent {
+		float lightIntensity = 1.0f;
+	};
+
     struct TransformComponent {
         glm::vec3 translation{}; // position offset
         glm::vec3 scale{ 1.0f, 1.0f, 1.0f };
@@ -31,6 +35,10 @@ namespace Engine {
 			static id_t currentId = 0;
 			return EngineGameObject{currentId++};
 		}
+		static EngineGameObject CreatePointLight(
+			float intensity = 10.f, 
+			float radius = 0.1f, 
+			glm::vec3 color = glm::vec3(1.0f));
 
 		EngineGameObject(const EngineGameObject&) = delete;
 		EngineGameObject& operator= (const EngineGameObject&) = delete;
@@ -41,6 +49,9 @@ namespace Engine {
 		std::shared_ptr<EngineModel> model{};
 		glm::vec3 color{};
 		TransformComponent transform;
+
+		// Optional
+		std::unique_ptr<PointLightComponent> pointLight = nullptr;
 
 	private:
 		EngineGameObject(id_t objId) : id (objId) {}

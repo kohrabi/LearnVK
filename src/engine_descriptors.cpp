@@ -190,7 +190,7 @@ namespace Engine {
         for (auto& write : writes) {
             write.dstSet = set;
         }
-        vkUpdateDescriptorSets(pool.engineDevice.device(), writes.size(), writes.data(), 0, nullptr);
+        vkUpdateDescriptorSets(pool.engineDevice.device(), static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
     }
 
 }  // namespace Engine

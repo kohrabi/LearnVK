@@ -1,5 +1,6 @@
 #include "first_app.hpp"
-#include "simple_render_system.hpp"
+#include "systems/simple_render_system.hpp"
+#include "systems/point_light_system.hpp"
 #include "engine_camera.hpp"
 #include "engine_buffer.hpp"
 #include "keyboard_movement_controller.hpp"
@@ -56,6 +57,11 @@ namespace Engine {
 			engineDevice, 
 			engineRenderer.GetSwapChainRenderPass(), 
 			globalSetLayout->getDescriptorSetLayout()};
+		
+		PointLightSystem pointLightSystem{
+			engineDevice,
+			engineRenderer.GetSwapChainRenderPass(),
+			globalSetLayout->getDescriptorSetLayout() };
 		EngineCamera camera{};
 		camera.SetViewTarget(glm::vec3{ -1.f, -2.f, -20.f }, glm::vec3{ 0.0f, 0.0f, 2.5f });
 
@@ -89,7 +95,10 @@ namespace Engine {
 				};
 				// Update
 				GlobalUbo ubo{};
-				ubo.projectionView = camera.GetProjection() * camera.GetView();
+				ubo.projection = camera.GetProjection();
+				ubo.view = camera.GetView();
+				ubo.inverseViewMatrix = camera.GetInverseView();
+				pointLightSystem.update(frameInfo, ubo);
 				uboBuffers[frameIndex]->writeToBuffer(&ubo);
 				uboBuffers[frameIndex]->flush();
 
@@ -98,7 +107,10 @@ namespace Engine {
 
 				engineRenderer.BeginSwapChainRenderPass(commandBuffer);
 
+				// Render solid first, transperant next
 				simpleRenderSystem.RenderGameObjects(frameInfo);
+				pointLightSystem.render(frameInfo);
+
 				engineRenderer.EndSwapChainRenderPass(commandBuffer);
 				engineRenderer.EndFrame();
 
@@ -112,14 +124,14 @@ namespace Engine {
 		std::shared_ptr < EngineModel > engineModel = EngineModel::CreateModelFromFile(engineDevice, "models\\smooth_vase.obj");
 		auto vase = EngineGameObject::CreateGameObject();
 		vase.model = engineModel;
-		vase.transform.translation = { 0.0f, 0.5f, 0.f };
+		vase.transform.translation = {-.5f, .5f, 0.f};
 		vase.transform.scale = glm::vec3(3.f, 1.5f, 3.f);
 		gameObjects.emplace(vase.GetId(), std::move(vase));
 
 		engineModel = EngineModel::CreateModelFromFile(engineDevice, "models\\flat_vase.obj");
 		auto flatVase = EngineGameObject::CreateGameObject();
 		flatVase.model = engineModel;
-		flatVase.transform.translation = { 2.5f, 0.5f, 0.f };
+		flatVase.transform.translation = {.5f, .5f, 0.f};
 		flatVase.transform.scale = glm::vec3(3.f, 1.5f, 3.f);
 		gameObjects.emplace(flatVase.GetId(), std::move(flatVase));
 
@@ -129,6 +141,29 @@ namespace Engine {
 		floor.transform.translation = { 0.f, 0.5f, 0.f };
 		floor.transform.scale = glm::vec3(3.f, 1.f, 3.f);
 		gameObjects.emplace(floor.GetId(), std::move(floor));
+
+		{
+		}
+
+		std::vector<glm::vec3> lightColors{
+			{1.f, .1f, .1f},
+			{.1f, .1f, 1.f},
+			{.1f, 1.f, .1f},
+			{1.f, 1.f, .1f},
+			{.1f, 1.f, 1.f},
+			{1.f, 1.f, 1.f}  //
+		};
+
+		for (int i = 0; i < lightColors.size(); i++) {
+
+			auto pointLight = EngineGameObject::CreatePointLight(.2f, 0.1f, lightColors[i]);
+			auto rotateLight = glm::rotate(glm::mat4(1.f), (i * glm::two_pi<float>()) / lightColors.size(), {0.0f, -1.0f, 0.0f});
+			pointLight.transform.translation = glm::vec3(rotateLight * glm::vec4(-1.f, -1.f, -1.f, 1.f));						
+			gameObjects.emplace(pointLight.GetId(), std::move(pointLight));
+
+		}
+
+
 	}
 
 }

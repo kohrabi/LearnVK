@@ -9,9 +9,12 @@ namespace Engine {
 
 	struct PipelineConfigInfo {
 
+		PipelineConfigInfo() = default;
 		PipelineConfigInfo(const PipelineConfigInfo&) = delete;
 		PipelineConfigInfo& operator=(const PipelineConfigInfo&) = delete;
 
+		std::vector<VkVertexInputBindingDescription> bindingDescriptions{};
+		std::vector<VkVertexInputAttributeDescription> attributeDescriptions{};
 		VkPipelineViewportStateCreateInfo viewportInfo;
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo;
 		VkPipelineRasterizationStateCreateInfo rasterizationInfo;
@@ -42,6 +45,7 @@ namespace Engine {
 
 		void Bind(VkCommandBuffer commandBuffer);
 		static void DefaultPipelineConfigInfo(PipelineConfigInfo& configInfo);
+		static void EnableAlphaBlending(PipelineConfigInfo& configInfo);
 
 	private:
 		static std::vector<char> readFile(const std::string& filePath);
