@@ -11,20 +11,9 @@
 #include <vector>
 
 
+
 namespace Engine {
-	#define MAX_LIGHTS 10
 
-	struct PointLight {
-		glm::vec4 position;
-		glm::vec4 color; // w is intensity
-	};
-
-	struct GlobalUbo {
-		alignas(16) glm::mat4 projectionView{ 1.0f };
-		glm::vec4 ambientLightColor{ 0.0f, 0.f, 8.f, .02f }; // w is intensity
-		glm::vec3 lightPosition{ -1.f };
-		alignas(16) glm::vec4 lightColor{ 1.f };  // w is light intensity
-	};
 
 	class FirstApp {
 	public:

@@ -7,6 +7,10 @@
 #include <iostream>
 #include <cassert>
 
+#ifndef ENGINE_DIR
+#define ENGINE_DIR "../"
+#endif
+
 namespace Engine {
 
 	EnginePipeline::EnginePipeline(
@@ -29,10 +33,11 @@ namespace Engine {
 	}
 
 	std::vector<char> EnginePipeline::readFile(const std::string& filePath) {
-		std::ifstream file{ filePath, std::ios::ate | std::ios::binary };
+		std::string enginePath = ENGINE_DIR + filePath;
+		std::ifstream file{ enginePath, std::ios::ate | std::ios::binary };
 
 		if (!file.is_open()) {
-			throw std::runtime_error("Failed to open file: " + filePath);
+			throw std::runtime_error("Failed to open file: " + enginePath);
 		}
 
 		size_t fileSize = static_cast<size_t>(file.tellg());
@@ -78,8 +83,8 @@ namespace Engine {
 		shaderStages[1].pSpecializationInfo = nullptr;
 
 		// Describe how to interpret vertex buffer data info the graphics pipeline
-		auto bindingDescriptions = EngineModel::Vertex::GetBindingDescriptions();
-		auto attributeDescriptions = EngineModel::Vertex::GetAttributeDescriptions();
+		auto& bindingDescriptions = configInfo.bindingDescriptions;
+		auto& attributeDescriptions = configInfo.attributeDescriptions;
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 		vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
@@ -210,5 +215,23 @@ namespace Engine {
 		configInfo.dynamicStateInfo.dynamicStateCount = static_cast<uint32_t>(configInfo.dynamicStateEnables.size());
 		configInfo.dynamicStateInfo.flags = 0;
 
+		configInfo.bindingDescriptions = EngineModel::Vertex::GetBindingDescriptions();
+		configInfo.attributeDescriptions = EngineModel::Vertex::GetAttributeDescriptions();
 	}
+
+	void EnginePipeline::EnableAlphaBlending(PipelineConfigInfo& configInfo){
+		// How Vk combine color
+		configInfo.colorBlendAttachment.blendEnable = VK_TRUE;
+
+		configInfo.colorBlendAttachment.colorWriteMask =
+			VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
+			VK_COLOR_COMPONENT_A_BIT;
+		configInfo.colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;  
+		configInfo.colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA; 
+		configInfo.colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;             
+		configInfo.colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;  
+		configInfo.colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; 
+		configInfo.colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;             
+	}
+
 }
